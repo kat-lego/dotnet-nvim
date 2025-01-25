@@ -35,6 +35,7 @@ function M.setup()
     nargs = '*', -- Accept multiple arguments
     complete = function(arg_lead)
       local completions = {
+        'sln',
         'new',
         'build',
         'run',
