@@ -58,6 +58,30 @@ function M.run_dotnet_command(args)
   vim.api.nvim_out_write(output .. '\n')
 end
 
+-- Helper function to get the list of .csproj files for completion
+local function get_csproj_completions(arg_lead)
+  local handle = io.popen 'find . -type f -name "*.csproj"' -- Search for .csproj files
+  if not handle then
+    vim.api.nvim_err_writeln 'Error: Unable to run the find command.'
+    return {}
+  end
+
+  local result = handle:read '*a'
+  handle:close()
+
+  if not result or result == '' then
+    return {} -- Return an empty table if no result
+  end
+
+  local completions = {}
+  for file in string.gmatch(result, '[^\r\n]+') do
+    if file:match('^' .. vim.pesc(arg_lead)) then
+      table.insert(completions, file)
+    end
+  end
+  return completions
+end
+
 -- Setup function to define commands
 function M.setup()
   -- Define :Dotnet command in Neovim
@@ -70,9 +94,17 @@ function M.setup()
       local context = args[2] or ''
       local completions = {}
 
+      -- Complete 'dotnet add' and 'dotnet sln' with .csproj files
       if context == 'add' then
-        completions = { 'package', 'reference' }
+        if args[3] == 'reference' then
+          -- Suggest .csproj files for reference addition
+          completions = get_csproj_completions(arg_lead)
+        end
+      elseif context == 'sln' then
+        -- Suggest .csproj files for sln add/remove
+        completions = get_csproj_completions(arg_lead)
       else
+        -- General dotnet commands
         completions = {
           'sln',
           'new',
