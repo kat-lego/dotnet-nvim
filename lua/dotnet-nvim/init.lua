@@ -13,6 +13,19 @@ local function run_command(cmd, cwd)
   return result
 end
 
+-- Helper function to find a specific file in the current or parent directories
+local function find_file_directory(file_pattern)
+  local current_dir = vim.fn.expand '%:p:h' -- Get the directory of the current buffer
+  while current_dir ~= '' and current_dir ~= '/' do
+    local files = vim.fn.glob(current_dir .. '/' .. file_pattern, false, true)
+    if #files > 0 then
+      return current_dir, files[1]
+    end
+    current_dir = vim.fn.fnamemodify(current_dir, ':h')
+  end
+  return nil, nil
+end
+
 -- Function to run dotnet commands
 function M.run_dotnet_command(args)
   if not args or #args == 0 then
@@ -20,8 +33,27 @@ function M.run_dotnet_command(args)
     return
   end
 
-  local cwd = vim.fn.expand '%:p:h' -- Get the directory of the current buffer
   local cmd = 'dotnet ' .. table.concat(args, ' ')
+  local cwd
+
+  if args[1] == 'sln' then
+    cwd = select(1, find_file_directory '*.sln')
+    if not cwd then
+      vim.api.nvim_err_writeln 'No solution (.sln) file found in the current or parent directories.'
+      return
+    end
+  elseif args[1] == 'add' then
+    local csproj_dir, csproj_file = find_file_directory '*.csproj'
+    if not csproj_file then
+      vim.api.nvim_err_writeln 'No project (.csproj) file found in the current or parent directories.'
+      return
+    end
+    table.insert(args, 2, csproj_file) -- Add the .csproj file path as the second argument
+    cwd = csproj_dir
+  else
+    cwd = vim.fn.expand '%:p:h' -- Default to the directory of the current buffer
+  end
+
   local output = run_command(cmd, cwd)
   vim.api.nvim_out_write(output .. '\n')
 end
@@ -33,22 +65,25 @@ function M.setup()
     M.run_dotnet_command(opts.fargs)
   end, {
     nargs = '*', -- Accept multiple arguments
-    complete = function(arg_lead)
-      local completions = {
-        'sln',
-        'new',
-        'build',
-        'run',
-        'test',
-        'publish',
-        'restore',
-        'clean',
-      }
+    complete = function(arg_lead, cmd_line)
+      local args = vim.split(cmd_line, '%s+')
+      local context = args[2] or ''
+      local completions = {}
 
-      -- Add directory suggestions
-      local dirs = vim.fn.glob('**/', true, true)
-      for _, dir in ipairs(dirs) do
-        table.insert(completions, dir)
+      if context == 'add' then
+        completions = { 'package', 'reference' }
+      else
+        completions = {
+          'sln',
+          'new',
+          'build',
+          'run',
+          'test',
+          'publish',
+          'restore',
+          'clean',
+          'add',
+        }
       end
 
       local matches = {}
