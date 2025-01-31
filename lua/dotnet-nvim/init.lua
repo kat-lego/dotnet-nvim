@@ -87,7 +87,9 @@ function M.setup()
           completions = get_path_completions(args[4] or '')
         end
       elseif context == 'sln' then
-        completions = get_path_completions(args[4] or '')
+        if args[3] == 'add' or args[3] == 'remove' then
+          completions = get_path_completions(args[4] or '')
+        end
       else
         -- General dotnet commands
         completions = {
