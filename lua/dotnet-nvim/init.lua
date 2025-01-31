@@ -13,6 +13,17 @@ local function run_command(cmd, cwd)
   return result
 end
 
+-- Helper function to list directories and files under a given path
+local function get_path_completions(input)
+  local path = input == '' and './' or input
+  local abs_path = vim.fn.fnamemodify(path, ':p')
+  local dir = vim.fn.isdirectory(abs_path) == 1 and abs_path or vim.fn.fnamemodify(abs_path, ':h')
+  local items = vim.fn.globpath(dir, '*', false, true)
+  return vim.tbl_map(function(item)
+    return vim.fn.fnamemodify(item, ':.')
+  end, items)
+end
+
 -- Helper function to find a specific file in the current or parent directories
 local function find_file_directory(file_pattern)
   local current_dir = vim.fn.expand '%:p:h' -- Get the directory of the current buffer
@@ -58,30 +69,6 @@ function M.run_dotnet_command(args)
   vim.api.nvim_out_write(output .. '\n')
 end
 
--- Helper function to get the list of .csproj files for completion
-local function get_csproj_completions(arg_lead)
-  local handle = io.popen 'find . -type f -name "*.csproj"' -- Search for .csproj files
-  if not handle then
-    vim.api.nvim_err_writeln 'Error: Unable to run the find command.'
-    return {}
-  end
-
-  local result = handle:read '*a'
-  handle:close()
-
-  if not result or result == '' then
-    return {} -- Return an empty table if no result
-  end
-
-  local completions = {}
-  for file in string.gmatch(result, '[^\r\n]+') do
-    if file:match('^' .. vim.pesc(arg_lead)) then
-      table.insert(completions, file)
-    end
-  end
-  return completions
-end
-
 -- Setup function to define commands
 function M.setup()
   -- Define :Dotnet command in Neovim
@@ -97,12 +84,10 @@ function M.setup()
       -- Complete 'dotnet add' and 'dotnet sln' with .csproj files
       if context == 'add' then
         if args[3] == 'reference' then
-          -- Suggest .csproj files for reference addition
-          completions = get_csproj_completions(arg_lead)
+          completions = get_path_completions(args[3] or '')
         end
       elseif context == 'sln' then
-        -- Suggest .csproj files for sln add/remove
-        completions = get_csproj_completions(arg_lead)
+        completions = get_path_completions(args[3] or '')
       else
         -- General dotnet commands
         completions = {
