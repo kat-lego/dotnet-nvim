@@ -84,10 +84,10 @@ function M.setup()
       -- Complete 'dotnet add' and 'dotnet sln' with .csproj files
       if context == 'add' then
         if args[3] == 'reference' then
-          completions = get_path_completions(args[3] or '')
+          completions = get_path_completions(args[4] or '')
         end
       elseif context == 'sln' then
-        completions = get_path_completions(args[3] or '')
+        completions = get_path_completions(args[4] or '')
       else
         -- General dotnet commands
         completions = {
