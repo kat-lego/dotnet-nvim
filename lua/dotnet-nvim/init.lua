@@ -93,6 +93,46 @@ local function get_package_completions(input)
   return packages
 end
 
+local function get_completions(arg_lead, cmd_line)
+  local args = vim.split(cmd_line, '%s+')
+  local context = args[2] or ''
+  local completions = {}
+
+  -- Complete 'dotnet add' and 'dotnet sln' with .csproj files or packages
+  if context == 'add' then
+    if args[3] == 'reference' then
+      completions = get_path_completions(args[4] or '')
+    elseif args[3] == 'package' then
+      completions = get_package_completions(args[4] or '')
+    end
+  elseif context == 'sln' then
+    if args[3] == 'add' or args[3] == 'remove' then
+      completions = get_path_completions(args[4] or '')
+    end
+  else
+    -- General dotnet commands
+    completions = {
+      'sln',
+      'new',
+      'build',
+      'run',
+      'test',
+      'publish',
+      'restore',
+      'clean',
+      'add',
+    }
+  end
+
+  local matches = {}
+  for _, item in ipairs(completions) do
+    if item:match('^' .. vim.pesc(arg_lead)) then
+      table.insert(matches, item)
+    end
+  end
+  return matches
+end
+
 -- Setup function to define commands
 function M.setup()
   -- Define :Dotnet command in Neovim
@@ -100,45 +140,7 @@ function M.setup()
     M.run_dotnet_command(opts.fargs)
   end, {
     nargs = '*', -- Accept multiple arguments
-    complete = function(arg_lead, cmd_line)
-      local args = vim.split(cmd_line, '%s+')
-      local context = args[2] or ''
-      local completions = {}
-
-      -- Complete 'dotnet add' and 'dotnet sln' with .csproj files or packages
-      if context == 'add' then
-        if args[3] == 'reference' then
-          completions = get_path_completions(args[4] or '')
-        elseif args[3] == 'package' then
-          completions = get_package_completions(args[4] or '')
-        end
-      elseif context == 'sln' then
-        if args[3] == 'add' or args[3] == 'remove' then
-          completions = get_path_completions(args[4] or '')
-        end
-      else
-        -- General dotnet commands
-        completions = {
-          'sln',
-          'new',
-          'build',
-          'run',
-          'test',
-          'publish',
-          'restore',
-          'clean',
-          'add',
-        }
-      end
-
-      local matches = {}
-      for _, item in ipairs(completions) do
-        if item:match('^' .. vim.pesc(arg_lead)) then
-          table.insert(matches, item)
-        end
-      end
-      return matches
-    end,
+    complete = get_completions,
   })
 end
 
