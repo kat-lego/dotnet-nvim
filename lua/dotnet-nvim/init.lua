@@ -104,10 +104,14 @@ local function get_completions(arg_lead, cmd_line)
       completions = get_path_completions(args[4] or '')
     elseif args[3] == 'package' then
       completions = get_package_completions(args[4] or '')
+    else
+      completions = { 'reference', 'package' }
     end
   elseif context == 'sln' then
     if args[3] == 'add' or args[3] == 'remove' then
       completions = get_path_completions(args[4] or '')
+    else
+      completions = { 'add', 'remove' }
     end
   else
     -- General dotnet commands
