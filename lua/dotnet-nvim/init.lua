@@ -1,6 +1,5 @@
 local M = {}
 
--- Helper function to run shell commands and capture output
 local function run_command(cmd, cwd)
   local handle
   if cwd then
@@ -13,7 +12,6 @@ local function run_command(cmd, cwd)
   return result
 end
 
--- Helper function to find a specific file in the current or parent directories
 local function find_file_directory(file_pattern)
   local current_dir = vim.fn.expand '%:p:h' -- Get the directory of the current buffer
   while current_dir ~= '' and current_dir ~= '/' do
@@ -26,7 +24,6 @@ local function find_file_directory(file_pattern)
   return nil, nil
 end
 
--- Function to run dotnet commands
 function M.run_dotnet_command(args)
   if not args or #args == 0 then
     vim.api.nvim_err_writeln 'No arguments provided for dotnet command.'
@@ -58,20 +55,41 @@ function M.run_dotnet_command(args)
   vim.api.nvim_out_write(output .. '\n')
 end
 
--- Helper function to list directories and files under a given path
-local function get_path_completions(input)
-  local path = input == '' and './' or input
-  local abs_path = vim.fn.fnamemodify(path, ':p')
-  local dir = vim.fn.isdirectory(abs_path) == 1 and abs_path or vim.fn.fnamemodify(abs_path, ':h')
-  local items = vim.fn.globpath(dir, '*', false, true)
-  return vim.tbl_map(function(item)
-    return vim.fn.fnamemodify(item, ':.')
-  end, items)
+local function get_path_completions(pathPrefix)
+  local path = nil
+
+  if pathPrefix == '' or pathPrefix == './' then
+    path = './'
+  else
+    path = pathPrefix
+  end
+
+  local parent_path, path_item = path:match '(.*/)(.*)'
+
+  if not parent_path then
+    parent_path = './'
+    path_item = path
+  end
+
+  local abs_parent_path = vim.fn.fnamemodify(parent_path, ':p')
+  local possible_parent_path_items = vim.fn.readdir(abs_parent_path)
+
+  local matches = {}
+  for _, item in ipairs(possible_parent_path_items) do
+    if item:match('^' .. vim.pesc(path_item)) then
+      table.insert(matches, item)
+    end
+  end
+
+  for i, item in ipairs(matches) do
+    matches[i] = abs_parent_path .. item
+  end
+
+  return matches
 end
 
--- Helper function to query the NuGet API for packages matching the input.
-local function get_package_completions(input)
-  local query = input or ''
+local function get_package_completions(packagePrefix)
+  local query = packagePrefix or ''
   local url = 'https://api-v2v3search-0.nuget.org/query?q=' .. vim.fn.escape(query, '"') .. '&take=20'
   local result = vim.fn.system { 'curl', '-s', url }
   if vim.v.shell_error ~= 0 then
@@ -98,7 +116,6 @@ local function get_completions(arg_lead, cmd_line)
   local context = args[2] or ''
   local completions = {}
 
-  -- Complete 'dotnet add' and 'dotnet sln' with .csproj files or packages
   if context == 'add' then
     if args[3] == 'reference' then
       completions = get_path_completions(args[4] or '')
@@ -114,7 +131,6 @@ local function get_completions(arg_lead, cmd_line)
       completions = { 'add', 'remove' }
     end
   else
-    -- General dotnet commands
     completions = {
       'sln',
       'new',
