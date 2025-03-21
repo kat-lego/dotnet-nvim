@@ -13,7 +13,7 @@ local function run_command(cmd, cwd)
 end
 
 local function find_file_directory(file_pattern)
-  local current_dir = vim.fn.expand '%:p:h' -- Get the directory of the current buffer
+  local current_dir = vim.fn.expand '%:p:h'
   while current_dir ~= '' and current_dir ~= '/' do
     local files = vim.fn.glob(current_dir .. '/' .. file_pattern, false, true)
     if #files > 0 then
@@ -82,7 +82,7 @@ local function get_path_completions(pathPrefix)
   end
 
   for i, item in ipairs(matches) do
-    matches[i] = abs_parent_path .. item
+    matches[i] = parent_path .. item
   end
 
   return matches
