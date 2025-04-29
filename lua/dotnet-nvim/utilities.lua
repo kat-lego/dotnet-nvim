@@ -19,6 +19,7 @@ end
 function M.get_working_directory(context)
   local csproj = '*.csproj'
   local solution = '*.sln'
+  local cwd
 
   local command_patterns_mapping = {
     ['sln'] = { solution },
@@ -32,10 +33,18 @@ function M.get_working_directory(context)
   local pattern = command_patterns_mapping[context]
 
   if not pattern then
-    return vim.fn.expand '%:p:h'
+    cwd = vim.fn.expand '%:p:h'
+
+    -- resolve context when in oil buffer
+    local oil = 'oil://'
+    if string.sub(cwd, 1, #oil) == oil then
+      cwd = string.sub(cwd, #oil + 1)
+    end
+
+    return cwd
   end
 
-  local cwd, _ = M.find_file_directory(pattern)
+  cwd, _ = M.find_file_directory(pattern)
 
   if not cwd then
     local message = ''
